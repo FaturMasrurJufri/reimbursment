@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aplikasi Reimburse</title>
+  <!-- Library Export PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --success: #16a34a;
+      --wa: #16a34a;
+      --wa-dark: #15803d;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --info: #0284c7;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 40px; }
+
+    .hidden { display: none !important; }
+    .container { max-width: 740px; margin: 0 auto; padding: 16px; }
+    .card { background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; border: 1px solid var(--border); }
+
+    /* Header */
+    .topbar { background: var(--primary); color: #fff; padding: 14px 16px; position: sticky; top: 0; z-index: 20; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+    .topbar-inner { max-width: 740px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .topbar h1 { font-size: 1.1rem; font-weight: 700; }
+    .user-info { font-size: 0.8rem; opacity: 0.9; }
+    .btn-logout { background: rgba(255,255,255,0.2); color: #fff; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
+    .btn-logout:hover { background: rgba(255,255,255,0.3); }
+
+    /* Login */
+    .login-wrap { max-width: 400px; margin: 60px auto; padding: 16px; }
+    .login-title { text-align: center; margin-bottom: 20px; }
+    .login-title h2 { font-size: 1.4rem; color: var(--primary); }
+    .login-title p { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+
+    /* Forms */
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    input, select, textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 0.95rem; background: #fff; color: var(--text); outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+    textarea { resize: vertical; min-height: 70px; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; justify-content: center; align-items: center; gap: 6px;
+      width: 100%; padding: 11px 16px; border: none; border-radius: 8px;
+      font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: 0.15s; text-decoration: none;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-wa { background: var(--wa); color: #fff; }
+    .btn-wa:hover { background: var(--wa-dark); }
+    .btn-pdf { background: var(--danger); color: #fff; }
+    .btn-pdf:hover { background: #b91c1c; }
+    .btn-sm { width: auto; padding: 6px 12px; font-size: 0.8rem; }
+    .btn-outline { background: #fff; color: var(--primary); border: 1px solid var(--primary); }
+
+    /* Summary Grid */
+    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+    .sum-box { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
+    .sum-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
+    .sum-val { font-size: 1rem; font-weight: 700; margin-top: 4px; color: var(--text); }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tab-btn {
+      flex: 1; padding: 10px; border: 1px solid var(--border); background: #fff;
+      border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; color: var(--muted);
+    }
+    .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* Plafon & Preview */
+    .plafon-note { font-size: 0.8rem; margin-top: 5px; color: var(--muted); }
+    .plafon-warn { color: var(--warning); font-weight: 600; }
+    .preview-box { margin-top: 8px; text-align: center; }
+    .preview-box img { max-width: 100%; max-height: 220px; border-radius: 8px; border: 1px solid var(--border); object-fit: contain; }
+    .compress-info { font-size: 0.75rem; color: var(--success); margin-top: 4px; }
+
+    /* Filter Bar */
+    .filter-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+    .filter-bar select, .filter-bar input { flex: 1; min-width: 130px; padding: 8px 10px; font-size: 0.85rem; }
+
+    /* Claim Item */
+    .claim-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 12px; background: #fff; }
+    .claim-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+    .claim-id { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+    .claim-nominal { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+    .claim-meta { font-size: 0.83rem; color: var(--muted); line-height: 1.5; }
+    .claim-meta strong { color: var(--text); }
+    .claim-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 99px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+    .badge-Pending { background: #fef3c7; color: #b45309; }
+    .badge-Approved { background: #e0f2fe; color: #0369a1; }
+    .badge-Paid { background: #dcfce7; color: #15803d; }
+    .badge-Rejected { background: #fee2e2; color: #b91c1c; }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(15,23,42,0.55); z-index: 50;
+      display: flex; align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-box { background: #fff; border-radius: 12px; width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; padding: 20px; }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .modal-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--muted); }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #0f172a; color: #fff; padding: 10px 18px; border-radius: 8px;
+      font-size: 0.85rem; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .footer-credit { text-align: center; font-size: 0.75rem; color: var(--muted); margin-top: 24px; }
+  </style>
+</head>
+<body>
+
+  <!-- ================= LOGIN VIEW ================= -->
+  <div id="loginView" class="login-wrap">
+    <div class="card">
+      <div class="login-title">
+        <h2>Aplikasi Reimburse</h2>
+        <p>Masuk menggunakan Nama / User ID dan PIN</p>
+      </div>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="loginIdentity">Nama atau User ID</label>
+          <input type="text" id="loginIdentity" placeholder="Contoh: USR-01 atau Budi Santoso" required />
+        </div>
+        <div class="form-group">
+          <label for="loginPin">PIN</label>
+          <input type="password" id="loginPin" inputmode="numeric" placeholder="Masukkan PIN" required />
+        </div>
+        <button type="submit" id="btnLogin" class="btn btn-primary">Masuk</button>
+      </form>
+    </div>
+    <div class="footer-credit">by Fatur62</div>
+  </div>
+
+  <!-- ================= MAIN APP VIEW ================= -->
+  <div id="appView" class="hidden">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div>
+          <h1>Reimburse</h1>
+          <div class="user-info" id="headerUserInfo">-</div>
+        </div>
+        <button class="btn-logout" id="btnLogout">Keluar</button>
+      </div>
+    </header>
+
+    <div class="container">
+      <!-- Ringkasan -->
+      <div class="summary-grid">
+        <div class="sum-box">
+          <div class="sum-label">Pending</div>
+          <div class="sum-val" id="sumPending">Rp 0</div>
+        </div>
+        <div class="sum-box">
+          <div class="sum-label">Disetujui</div>
+          <div class="sum-val" id="sumApproved">Rp 0</div>
+        </div>
+        <div class="sum-box">
+          <div class="sum-label">Sudah Cair</div>
+          <div class="sum-val" id="sumPaid">Rp 0</div>
+        </div>
+      </div>
+
+      <!-- Navigasi Tab -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="formTab">+ Ajukan Klaim</button>
+        <button class="tab-btn" data-tab="listTab">Daftar Klaim & Laporan</button>
+      </div>
+
+      <!-- TAB 1: FORM PENGAJUAN -->
+      <div id="formTab" class="card">
+        <form id="claimForm">
+          <div class="form-group">
+            <label for="tanggalNota">Tanggal Nota / Struk</label>
+            <input type="date" id="tanggalNota" required />
+          </div>
+          <div class="form-group">
+            <label for="kategori">Kategori Pengeluaran</label>
+            <select id="kategori" required></select>
+            <div id="plafonInfo" class="plafon-note"></div>
+          </div>
+          <div class="form-group">
+            <label for="nominal">Nominal (Rp)</label>
+            <input type="number" id="nominal" min="1000" placeholder="Contoh: 50000" required />
+            <div id="plafonWarn" class="plafon-note plafon-warn hidden"></div>
+          </div>
+          <div class="form-group">
+            <label for="keterangan">Keterangan / Keperluan</label>
+            <textarea id="keterangan" placeholder="Contoh: Isi bensin dinas luar ke Sleman" required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="fotoStruk">Foto Struk / Nota (Otomatis dikompres)</label>
+            <input type="file" id="fotoStruk" accept="image/*" capture="environment" required />
+            <div id="strukPreview" class="preview-box hidden">
+              <img id="strukImg" alt="Preview Struk" />
+              <div id="strukInfo" class="compress-info"></div>
+            </div>
+          </div>
+          <button type="submit" id="btnSubmitClaim" class="btn btn-primary">Kirim Pengajuan</button>
+        </form>
+      </div>
+
+      <!-- TAB 2: DAFTAR KLAIM & EXPORT PDF -->
+      <div id="listTab" class="hidden">
+        <div class="filter-bar">
+          <input type="month" id="filterMonth" title="Filter Bulan" />
+          <select id="filterStatus">
+            <option value="ALL">Semua Status</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Paid">Paid (Cair)</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+          <input type="text" id="searchClaim" placeholder="Cari nama / keterangan..." />
+        </div>
+        <div class="filter-bar">
+          <button class="btn btn-outline btn-sm" id="btnRefresh">Refresh Data</button>
+          <button class="btn btn-pdf btn-sm" id="btnExportPdf">Export Laporan PDF</button>
+        </div>
+        <div id="claimsContainer"></div>
+      </div>
+
+      <div class="footer-credit">by Fatur62</div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL PROSES ADMIN/ATASAN ================= -->
+  <div id="processModal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>Proses Klaim</h3>
+        <button class="modal-close" id="closeModal">&times;</button>
+      </div>
+      <div id="modalClaimDetail" class="claim-meta" style="margin-bottom:14px;"></div>
+      <form id="processForm">
+        <input type="hidden" id="procClaimId" />
+        <div class="form-group">
+          <label for="procStatus">Ubah Status Menjadi</label>
+          <select id="procStatus" required>
+            <option value="Approved">Approved (Disetujui)</option>
+            <option value="Paid">Paid (Sudah Ditransfer)</option>
+            <option value="Rejected">Rejected (Ditolak)</option>
+            <option value="Pending">Pending</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="procCatatan">Catatan Atasan / Keuangan</label>
+          <textarea id="procCatatan" placeholder="Opsional: alasan penolakan atau catatan transfer"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="procBukti">Upload Bukti Transfer (Opsional, khusus status Paid)</label>
+          <input type="file" id="procBukti" accept="image/*" />
+          <div id="buktiInfo" class="compress-info"></div>
+        </div>
+        <button type="submit" id="btnSaveProcess" class="btn btn-primary">Simpan Perubahan</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script>
+    // ======================================================
+    // KONFIGURASI UTAMA (WAJIB DIGANTI)
+    // ======================================================
+    const API_URL = 'GANTI_DENGAN_WEB_APP_URL_APPS_SCRIPT';
+    const ADMIN_WA = '6281234567890'; // Format internasional tanpa + atau 0 di depan
+    const NAMA_INSTANSI = 'Laporan Reimburse'; // Judul pada kop PDF
+
+    let currentUser = null;
+    let categories = [];
+    let allClaims = [];
+    let compressedStruk = null;
+    let compressedBukti = null;
+
+    const formatRp = (num) => 'Rp ' + (Number(num) || 0).toLocaleString('id-ID');
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 3200);
+    }
+
+    async function apiCall(payload) {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    }
+
+    function compressImage(file, maxWidth = 1000, quality = 0.7) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+            const sizeKB = Math.round((dataUrl.length * 3) / 4 / 1024);
+            resolve({ base64: dataUrl, mimeType: 'image/jpeg', sizeKB });
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // ================= LOGIN & SESSION =================
+    function initApp() {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('tanggalNota').value = today;
+      document.getElementById('filterMonth').value = today.slice(0, 7); // Default bulan berjalan (YYYY-MM)
+
+      const saved = localStorage.getItem('reimburse_session');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        currentUser = parsed.user;
+        categories = parsed.categories || [];
+        enterDashboard();
+      }
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btnLogin');
+      btn.disabled = true;
+      btn.textContent = 'Memeriksa...';
+
+      try {
+        const res = await apiCall({
+          action: 'login',
+          identity: document.getElementById('loginIdentity').value.trim(),
+          pin: document.getElementById('loginPin').value.trim()
+        });
+
+        if (res.status === 'success') {
+          currentUser = res.user;
+          categories = res.categories || [];
+          localStorage.setItem('reimburse_session', JSON.stringify({ user: currentUser, categories }));
+          enterDashboard();
+          showToast('Selamat datang, ' + currentUser.nama);
+        } else {
+          showToast(res.message || 'Login gagal');
+        }
+      } catch {
+        showToast('Gagal terhubung ke server. Cek API_URL.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Masuk';
+      }
+    });
+
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      localStorage.removeItem('reimburse_session');
+      currentUser = null;
+      document.getElementById('appView').classList.add('hidden');
+      document.getElementById('loginView').classList.remove('hidden');
+      document.getElementById('loginForm').reset();
+    });
+
+    function enterDashboard() {
+      document.getElementById('loginView').classList.add('hidden');
+      document.getElementById('appView').classList.remove('hidden');
+      document.getElementById('headerUserInfo').textContent = `${currentUser.nama} (${currentUser.role})`;
+      renderCategories();
+      loadClaims();
+    }
+
+    // ================= KATEGORI & PLAFON =================
+    function renderCategories() {
+      const sel = document.getElementById('kategori');
+      sel.innerHTML = categories.map((c) => `<option value="${c.nama}" data-plafon="${c.plafon}">${c.nama}</option>`).join('');
+      checkPlafon();
+    }
+
+    function checkPlafon() {
+      const sel = document.getElementById('kategori');
+      const opt = sel.options[sel.selectedIndex];
+      const plafon = Number(opt?.dataset.plafon || 0);
+      const nominal = Number(document.getElementById('nominal').value || 0);
+      const infoEl = document.getElementById('plafonInfo');
+      const warnEl = document.getElementById('plafonWarn');
+
+      infoEl.textContent = plafon > 0 ? `Batas plafon kategori ini: ${formatRp(plafon)}` : 'Tidak ada batas plafon.';
+      if (plafon > 0 && nominal > plafon) {
+        warnEl.textContent = `Perhatian: Nominal melebihi plafon (${formatRp(plafon)}). Tetap bisa diajukan untuk tinjauan atasan.`;
+        warnEl.classList.remove('hidden');
+      } else {
+        warnEl.classList.add('hidden');
+      }
+    }
+
+    document.getElementById('kategori').addEventListener('change', checkPlafon);
+    document.getElementById('nominal').addEventListener('input', checkPlafon);
+
+    // ================= TABS =================
+    document.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('formTab').classList.toggle('hidden', btn.dataset.tab !== 'formTab');
+        document.getElementById('listTab').classList.toggle('hidden', btn.dataset.tab !== 'listTab');
+      });
+    });
+
+    // ================= UPLOAD & SUBMIT KLAIM =================
+    document.getElementById('fotoStruk').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        compressedStruk = await compressImage(file);
+        document.getElementById('strukImg').src = compressedStruk.base64;
+        document.getElementById('strukInfo').textContent = `Siap upload (${compressedStruk.sizeKB} KB)`;
+        document.getElementById('strukPreview').classList.remove('hidden');
+      } catch {
+        showToast('Gagal memproses gambar.');
+      }
+    });
+
+    document.getElementById('claimForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!compressedStruk) {
+        showToast('Harap pilih foto struk terlebih dahulu.');
+        return;
+      }
+      const btn = document.getElementById('btnSubmitClaim');
+      btn.disabled = true;
+      btn.textContent = 'Mengirim & Upload Struk...';
+
+      try {
+        const res = await apiCall({
+          action: 'submitClaim',
+          userId: currentUser.userId,
+          namaPemohon: currentUser.nama,
+          tanggalNota: document.getElementById('tanggalNota').value,
+          kategori: document.getElementById('kategori').value,
+          nominal: Number(document.getElementById('nominal').value),
+          keterangan: document.getElementById('keterangan').value.trim(),
+          fileBase64: compressedStruk.base64,
+          mimeType: compressedStruk.mimeType
+        });
+
+        if (res.status === 'success') {
+          showToast('Pengajuan berhasil dikirim! ID: ' + res.claimId);
+          document.getElementById('claimForm').reset();
+          document.getElementById('tanggalNota').value = new Date().toISOString().split('T')[0];
+          document.getElementById('strukPreview').classList.add('hidden');
+          compressedStruk = null;
+          checkPlafon();
+          await loadClaims();
+          document.querySelector('[data-tab="listTab"]').click();
+        } else {
+          showToast(res.message || 'Gagal mengirim klaim.');
+        }
+      } catch {
+        showToast('Terjadi kesalahan jaringan.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Kirim Pengajuan';
+      }
+    });
+
+    // ================= FILTER & RENDER DAFTAR KLAIM =================
+    function getFilteredClaims() {
+      const monthFilter = document.getElementById('filterMonth').value; // YYYY-MM
+      const statusFilter = document.getElementById('filterStatus').value;
+      const keyword = document.getElementById('searchClaim').value.trim().toLowerCase();
+
+      return allClaims.filter((c) => {
+        const matchMonth = !monthFilter || String(c.tanggalNota || '').startsWith(monthFilter);
+        const matchStatus = statusFilter === 'ALL' || c.status === statusFilter;
+        const matchKey = !keyword ||
+          c.namaPemohon.toLowerCase().includes(keyword) ||
+          c.keterangan.toLowerCase().includes(keyword) ||
+          c.kategori.toLowerCase().includes(keyword) ||
+          c.id.toLowerCase().includes(keyword);
+        return matchMonth && matchStatus && matchKey;
+      });
+    }
+
+    async function loadClaims() {
+      const container = document.getElementById('claimsContainer');
+      container.innerHTML = '<div class="card" style="text-align:center;color:#64748b;">Memuat data...</div>';
+
+      try {
+        const res = await apiCall({
+          action: 'getClaims',
+          userId: currentUser.userId,
+          role: currentUser.role
+        });
+
+        if (res.status === 'success') {
+          allClaims = res.claims || [];
+          renderClaims();
+        } else {
+          container.innerHTML = `<div class="card">${res.message}</div>`;
+        }
+      } catch {
+        container.innerHTML = '<div class="card">Gagal memuat data dari server.</div>';
+      }
+    }
+
+    function updateSummary(list) {
+      let pending = 0, approved = 0, paid = 0;
+      list.forEach((c) => {
+        if (c.status === 'Pending') pending += c.nominal;
+        if (c.status === 'Approved') approved += c.nominal;
+        if (c.status === 'Paid') paid += c.nominal;
+      });
+      document.getElementById('sumPending').textContent = formatRp(pending);
+      document.getElementById('sumApproved').textContent = formatRp(approved);
+      document.getElementById('sumPaid').textContent = formatRp(paid);
+    }
+
+    function renderClaims() {
+      const isPrivileged = ['admin', 'atasan', 'keuangan'].includes(currentUser.role.toLowerCase());
+      const filtered = getFilteredClaims();
+      updateSummary(filtered);
+
+      const container = document.getElementById('claimsContainer');
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="card" style="text-align:center;color:#64748b;">Tidak ada data klaim pada periode/filter ini.</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map((c) => `
+        <div class="claim-card">
+          <div class="claim-head">
+            <div>
+              <div class="claim-id">${c.id} • ${c.tanggalNota}</div>
+              <div class="claim-nominal">${formatRp(c.nominal)}</div>
+            </div>
+            <span class="badge badge-${c.status}">${c.status}</span>
+          </div>
+          <div class="claim-meta">
+            <div><strong>${c.namaPemohon}</strong> • ${c.kategori}</div>
+            <div>${c.keterangan}</div>
+            ${isPrivileged ? `<div>Rekening: <strong>${c.noRekening}</strong></div>` : ''}
+            ${c.catatanAdmin ? `<div style="margin-top:4px;color:#0f172a;">Catatan: <em>${c.catatanAdmin}</em> (${c.diprosesOleh})</div>` : ''}
+          </div>
+          <div class="claim-actions">
+            ${c.linkStruk ? `<a href="${c.linkStruk}" target="_blank" class="btn btn-outline btn-sm">Lihat Struk</a>` : ''}
+            ${c.linkBuktiTransfer ? `<a href="${c.linkBuktiTransfer}" target="_blank" class="btn btn-outline btn-sm">Bukti Transfer</a>` : ''}
+            ${isPrivileged ? `<button class="btn btn-primary btn-sm" onclick="openProcessModal('${c.id}')">Proses</button>` : ''}
+            <button class="btn btn-wa btn-sm" onclick="sendWhatsApp('${c.id}')">${isPrivileged ? 'WA Pemohon' : 'WA Admin'}</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('filterMonth').addEventListener('change', renderClaims);
+    document.getElementById('filterStatus').addEventListener('change', renderClaims);
+    document.getElementById('searchClaim').addEventListener('input', renderClaims);
+    document.getElementById('btnRefresh').addEventListener('click', loadClaims);
+
+    // ================= NOTIFIKASI WHATSAPP =================
+    window.sendWhatsApp = function(claimId) {
+      const c = allClaims.find((item) => item.id === claimId);
+      if (!c) return;
+      const isPrivileged = ['admin', 'atasan', 'keuangan'].includes(currentUser.role.toLowerCase());
+
+      let msg = '';
+      let url = '';
+
+      if (isPrivileged) {
+        // Admin/Atasan mengirim update status ke Pemohon (membuka pilih kontak WA)
+        msg = `*UPDATE STATUS REIMBURSE*\n` +
+              `ID: ${c.id}\n` +
+              `Pemohon: ${c.namaPemohon}\n` +
+              `Kategori: ${c.kategori}\n` +
+              `Nominal: ${formatRp(c.nominal)}\n` +
+              `Status: *${c.status.toUpperCase()}*\n` +
+              (c.catatanAdmin ? `Catatan: ${c.catatanAdmin}\n` : '') +
+              (c.linkBuktiTransfer ? `Bukti Transfer: ${c.linkBuktiTransfer}\n` : '') +
+              `\nDiproses oleh: ${c.diprosesOleh || currentUser.nama}`;
+        url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+      } else {
+        // Karyawan mengirim notifikasi pengajuan ke nomor Admin/Keuangan
+        msg = `*PENGAJUAN REIMBURSE BARU*\n` +
+              `ID: ${c.id}\n` +
+              `Nama: ${c.namaPemohon}\n` +
+              `Tanggal Nota: ${c.tanggalNota}\n` +
+              `Kategori: ${c.kategori}\n` +
+              `Nominal: ${formatRp(c.nominal)}\n` +
+              `Keterangan: ${c.keterangan}\n` +
+              (c.linkStruk ? `Link Struk: ${c.linkStruk}\n` : '') +
+              `\nMohon bantuannya untuk dicek. Terima kasih.`;
+        url = `https://wa.me/${ADMIN_WA}?text=${encodeURIComponent(msg)}`;
+      }
+
+      window.open(url, '_blank');
+    };
+
+    // ================= EXPORT LAPORAN PDF BULANAN =================
+    document.getElementById('btnExportPdf').addEventListener('click', () => {
+      const data = getFilteredClaims();
+      if (data.length === 0) {
+        showToast('Tidak ada data untuk di-export ke PDF.');
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const monthVal = document.getElementById('filterMonth').value || 'Semua Periode';
+      const statusVal = document.getElementById('filterStatus').value;
+
+      // Kop Laporan
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text(NAMA_INSTANSI.toUpperCase(), 14, 16);
+
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
+      doc.text(`Periode: ${monthVal}   |   Filter Status: ${statusVal}   |   Dicetak oleh: ${currentUser.nama}`, 14, 22);
+
+      // Hitung Ringkasan
+      let totalAll = 0, totalPaid = 0, totalPending = 0;
+      const rows = data.map((c, idx) => {
+        totalAll += c.nominal;
+        if (c.status === 'Paid') totalPaid += c.nominal;
+        if (c.status === 'Pending') totalPending += c.nominal;
+        return [
+          idx + 1,
+          c.id,
+          c.tanggalNota,
+          c.namaPemohon,
+          c.kategori,
+          c.keterangan,
+          formatRp(c.nominal),
+          c.status,
+          c.diprosesOleh || '-'
+        ];
+      });
+
+      // Tabel Utama
+      doc.autoTable({
+        startY: 27,
+        head: [['No', 'ID Klaim', 'Tgl Nota', 'Pemohon', 'Kategori', 'Keterangan', 'Nominal', 'Status', 'Diproses']],
+        body: rows,
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        headStyles: { fillColor: [37, 99, 235] },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 10 },
+          6: { halign: 'right' },
+          7: { halign: 'center' }
+        }
+      });
+
+      // Ringkasan Total & Kolom Tanda Tangan
+      const finalY = doc.lastAutoTable.finalY + 8;
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'bold');
+      doc.text(`Total Pengajuan: ${formatRp(totalAll)}   |   Sudah Cair (Paid): ${formatRp(totalPaid)}   |   Pending: ${formatRp(totalPending)}`, 14, finalY);
+
+      const signY = finalY + 14;
+      if (signY < 185) {
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(9);
+        doc.text('Dibuat oleh,', 30, signY);
+        doc.text('Disetujui oleh,', 220, signY);
+        doc.text('( .............................. )', 22, signY + 18);
+        doc.text('( .............................. )', 212, signY + 18);
+      }
+
+      doc.save(`Laporan_Reimburse_${monthVal}.pdf`);
+      showToast('Laporan PDF berhasil diunduh.');
+    });
+
+    // ================= MODAL PROSES ADMIN/ATASAN =================
+    window.openProcessModal = function(claimId) {
+      const c = allClaims.find((item) => item.id === claimId);
+      if (!c) return;
+      compressedBukti = null;
+      document.getElementById('procClaimId').value = c.id;
+      document.getElementById('procStatus').value = c.status === 'Pending' ? 'Approved' : c.status;
+      document.getElementById('procCatatan').value = c.catatanAdmin || '';
+      document.getElementById('procBukti').value = '';
+      document.getElementById('buktiInfo').textContent = '';
+
+      document.getElementById('modalClaimDetail').innerHTML = `
+        <div><strong>${c.id}</strong> (${c.tanggalNota})</div>
+        <div>Pemohon: <strong>${c.namaPemohon}</strong></div>
+        <div>Rekening: <strong>${c.noRekening}</strong></div>
+        <div>Nominal: <strong>${formatRp(c.nominal)}</strong> — ${c.kategori}</div>
+        <div>Keterangan: ${c.keterangan}</div>
+      `;
+      document.getElementById('processModal').classList.remove('hidden');
+    };
+
+    document.getElementById('closeModal').addEventListener('click', () => {
+      document.getElementById('processModal').classList.add('hidden');
+    });
+
+    document.getElementById('procBukti').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      compressedBukti = await compressImage(file);
+      document.getElementById('buktiInfo').textContent = `Bukti transfer siap upload (${compressedBukti.sizeKB} KB)`;
+    });
+
+    document.getElementById('processForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btnSaveProcess');
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan...';
+
+      try {
+        const res = await apiCall({
+          action: 'updateStatus',
+          claimId: document.getElementById('procClaimId').value,
+          newStatus: document.getElementById('procStatus').value,
+          catatanAdmin: document.getElementById('procCatatan').value.trim(),
+          diprosesOleh: currentUser.nama,
+          buktiBase64: compressedBukti ? compressedBukti.base64 : '',
+          buktiMimeType: compressedBukti ? compressedBukti.mimeType : ''
+        });
+
+        if (res.status === 'success') {
+          showToast(res.message);
+          document.getElementById('processModal').classList.add('hidden');
+          loadClaims();
+        } else {
+          showToast(res.message || 'Gagal memperbarui status.');
+        }
+      } catch {
+        showToast('Terjadi kesalahan jaringan.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Simpan Perubahan';
+      }
+    });
+
+    initApp();
+  </script>
+</body>
+</html>
